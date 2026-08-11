@@ -1,4 +1,3 @@
-// Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod watcher;
@@ -7,7 +6,9 @@ use serde::Serialize;
 use std::path::Path;
 use std::process::Command;
 use tauri::{Manager, PhysicalPosition, Position, Window};
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+use tauri_plugin_global_shortcut::{
+    Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ScrapedShortcut {
@@ -144,30 +145,35 @@ fn get_active_app_shortcuts(app_name: String) -> Vec<ScrapedShortcut> {
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
-            let handle = app.handle().clone();
+            // Option + Space global hotkey
+            let option_space = Shortcut::new(Some(Modifiers::ALT), Code::Space);
 
-            // Register global Option+Space shortcut to toggle HUD
-            if let Err(err) = app.global_shortcut().on_shortcut("Option+Space", move |app_handle, _shortcut, event| {
-                if event.state() == ShortcutState::Pressed {
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        let is_visible = window.is_visible().unwrap_or(false);
-                        if is_visible {
-                            let _ = window.hide();
-                        } else {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+            app.handle().plugin(
+                tauri_plugin_global_shortcut::Builder::new()
+                    .with_handler(move |app, shortcut_match, event| {
+                        if shortcut_match == &option_space && event.state() == ShortcutState::Pressed {
+                            if let Some(window) = app.get_webview_window("main") {
+                                if window.is_visible().unwrap_or(false) {
+                                    let _ = window.hide();
+                                } else {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                            }
                         }
-                    }
-                }
-            }) {
-                eprintln!("[FlowKey] Failed to register global shortcut: {:?}", err);
-            }
+                    })
+                    .build(),
+            )?;
 
+            app.global_shortcut().register(option_space)?;
+
+            // Background watcher thread
+            let handle = app.handle().clone();
             std::thread::spawn(move || {
                 watcher::start_watching(handle);
             });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
