@@ -13,14 +13,16 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "flowkey",
-        "width": 380,
-        "height": 560,
-        "resizable": true,
+        "title": "FlowKey",
+        "width": 780,
+        "height": 510,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": true,
-        "center": true
+        "resizable": true,
+        "fullscreen": false,
+        "label": "main",
+        "shadow": true,
+        "alwaysOnTop": true
       }
     ]
   },
